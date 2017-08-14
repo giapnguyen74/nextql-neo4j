@@ -9,7 +9,7 @@ var driver = neo4j.driver(
 	"bolt://localhost",
 	neo4j.auth.basic("neo4j", "neo4j")
 );
-nextql.use(nextqlNeo4j, { driver });
+nextql.use(nextqlNeo4j);
 
 nextql.model("Person", {
 	neo4j: {
@@ -58,7 +58,8 @@ RETURN n`,
 const context = nextqlNeo4j.create_context(driver);
 
 beforeAll(async function() {
-	await context.neo4j.run("MATCH (n) DETACH DELETE n");
+	await context.neo4j.run("MATCH (n:Person) DETACH DELETE n");
+	await context.neo4j.run("MATCH (n:Movie) DETACH DELETE n");
 	await context.neo4j.run(
 		"CREATE CONSTRAINT ON (n:Person) ASSERT n.name IS UNIQUE"
 	);
@@ -280,19 +281,19 @@ test("relationship", async function() {
 					name: "GoT",
 					actors: [
 						{
-							name: "Jackson",
+							name: "Timcook",
 							movies: [
-								{
-									name: "WoW"
-								},
 								{
 									name: "GoT"
 								}
 							]
 						},
 						{
-							name: "Timcook",
+							name: "Jackson",
 							movies: [
+								{
+									name: "WoW"
+								},
 								{
 									name: "GoT"
 								}
