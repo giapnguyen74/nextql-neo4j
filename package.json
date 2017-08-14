@@ -1,0 +1,25 @@
+{
+	"name": "nextql-neo4j",
+	"version": "0.0.1",
+	"description": "NextQL Plugin for Neo4j - API Graph Mapping",
+	"main": "lib/index.js",
+	"scripts": {
+		"test": "jest --coverage"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/giapnguyen74/nextql-neo4j.git"
+	},
+	"keywords": ["nextql", "nextql-plugin", "neo4j", "ogm"],
+	"author": "“Giap <“sorite2003@gmail.com”> (“https://www.linkedin.com/in/giapnh”)",
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/giapnguyen74/nextql-neo4j/issues"
+	},
+	"homepage": "https://github.com/giapnguyen74/nextql-neo4j#readme",
+	"devDependencies": {
+		"babel-eslint": "^7.2.3",
+		"eslint": "^4.4.1",
+		"neo4j-driver": "^1.4.0"
+	}
+}
