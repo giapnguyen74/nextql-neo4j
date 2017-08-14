@@ -272,7 +272,37 @@ test("relationship", async function() {
 		},
 		context
 	);
-	console.log(JSON.stringify(result, null, 2));
+
+	expect(result).toMatchObject({
+		Movie: {
+			find: [
+				{
+					name: "GoT",
+					actors: [
+						{
+							name: "Jackson",
+							movies: [
+								{
+									name: "WoW"
+								},
+								{
+									name: "GoT"
+								}
+							]
+						},
+						{
+							name: "Timcook",
+							movies: [
+								{
+									name: "GoT"
+								}
+							]
+						}
+					]
+				}
+			]
+		}
+	});
 });
 
 afterAll(() => {
