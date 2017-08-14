@@ -12,26 +12,73 @@ var driver = neo4j.driver(
 nextql.use(nextqlNeo4j, { driver });
 
 nextql.model("Person", {
-	neo4j: {},
+	neo4j: {
+		relationships: {
+			movies: {
+				type: "ACTOR",
+				in: true
+			}
+		}
+	},
 	fields: {
 		name: 1,
 		fullName: 1
 	}
 });
 
-test("create", async function() {
-	const session = driver.session();
-	await session.run("MATCH (n:Person) DETACH DELETE n");
-	session.close();
-
-	const result = await nextql.execute({
-		Person: {
-			create: {
-				$params: { data: { name: "Giap" } },
-				name: 1
+nextql.model("Movie", {
+	neo4j: {
+		relationships: {
+			actors: {
+				type: "ACTOR"
 			}
 		}
-	});
+	},
+	fields: {
+		name: 1
+	},
+	methods: {
+		updateActors(params, ctx) {
+			return ctx.neo4j
+				.run(
+					`MATCH (m:Movie),(p:Person)
+WHERE m.name = $movie AND p.name IN $actors
+CREATE (m)-[n:ACTOR]->(p)
+RETURN n`,
+					{
+						movie: params.movie,
+						actors: params.actors
+					}
+				)
+				.then(result => result.length);
+		}
+	}
+});
+
+const context = nextqlNeo4j.create_context(driver);
+
+beforeAll(async function() {
+	await context.neo4j.run("MATCH (n) DETACH DELETE n");
+	await context.neo4j.run(
+		"CREATE CONSTRAINT ON (n:Person) ASSERT n.name IS UNIQUE"
+	);
+	await context.neo4j.run(
+		"CREATE CONSTRAINT ON (n:Movie) ASSERT n.name IS UNIQUE"
+	);
+});
+
+test("create", async function() {
+	const result = await nextql.execute(
+		{
+			Person: {
+				create: {
+					$params: { data: { name: "Giap" } },
+					name: 1
+				}
+			}
+		},
+		context
+	);
 	expect(result).toMatchObject({
 		Person: {
 			create: [
@@ -44,13 +91,16 @@ test("create", async function() {
 });
 
 test("findAll", async function() {
-	const result = await nextql.execute({
-		Person: {
-			find: {
-				name: 1
+	const result = await nextql.execute(
+		{
+			Person: {
+				find: {
+					name: 1
+				}
 			}
-		}
-	});
+		},
+		context
+	);
 	expect(result).toMatchObject({
 		Person: {
 			find: [
@@ -63,20 +113,23 @@ test("findAll", async function() {
 });
 
 test("find with query", async function() {
-	const result = await nextql.execute({
-		Person: {
-			find: {
-				$params: {
-					query: {
-						name: {
-							$gt: "G"
+	const result = await nextql.execute(
+		{
+			Person: {
+				find: {
+					$params: {
+						query: {
+							name: {
+								$gt: "G"
+							}
 						}
-					}
-				},
-				name: 1
+					},
+					name: 1
+				}
 			}
-		}
-	});
+		},
+		context
+	);
 	expect(result).toMatchObject({
 		Person: {
 			find: [
@@ -89,20 +142,23 @@ test("find with query", async function() {
 });
 
 test("update", async function() {
-	const result = await nextql.execute({
-		Person: {
-			update: {
-				$params: {
-					id: "Giap",
-					data: {
-						fullName: "Thanh"
-					}
-				},
-				name: 1,
-				fullName: 1
+	const result = await nextql.execute(
+		{
+			Person: {
+				update: {
+					$params: {
+						id: "Giap",
+						data: {
+							fullName: "Thanh"
+						}
+					},
+					name: 1,
+					fullName: 1
+				}
 			}
-		}
-	});
+		},
+		context
+	);
 
 	expect(result).toMatchObject({
 		Person: {
@@ -117,15 +173,18 @@ test("update", async function() {
 });
 
 test("remove", async function() {
-	const result = await nextql.execute({
-		Person: {
-			remove: {
-				$params: {
-					id: "Giap"
+	const result = await nextql.execute(
+		{
+			Person: {
+				remove: {
+					$params: {
+						id: "Giap"
+					}
 				}
 			}
-		}
-	});
+		},
+		context
+	);
 	expect(result).toMatchObject({
 		Person: {
 			remove: 1
@@ -133,4 +192,89 @@ test("remove", async function() {
 	});
 });
 
-afterAll(() => driver.close());
+test("relationship", async function() {
+	await nextql.execute(
+		{
+			Person: {
+				"create/1": {
+					$params: {
+						data: {
+							name: "Jackson"
+						}
+					}
+				},
+				"create/2": {
+					$params: {
+						data: {
+							name: "Timcook"
+						}
+					}
+				}
+			},
+			Movie: {
+				"create/1": {
+					$params: {
+						data: {
+							name: "GoT"
+						}
+					}
+				},
+				"create/2": {
+					$params: {
+						data: {
+							name: "WoW"
+						}
+					}
+				}
+			}
+		},
+		context
+	);
+
+	await nextql.execute(
+		{
+			Movie: {
+				updateActors: {
+					$params: {
+						movie: "GoT",
+						actors: ["Jackson", "Timcook"]
+					}
+				},
+				"updateActors/1": {
+					$params: {
+						movie: "WoW",
+						actors: ["Jackson"]
+					}
+				}
+			}
+		},
+		context
+	);
+
+	const result = await nextql.execute(
+		{
+			Movie: {
+				find: {
+					$params: {
+						query: {
+							name: "GoT"
+						}
+					},
+					name: 1,
+					actors: {
+						name: 1,
+						movies: {
+							name: 1
+						}
+					}
+				}
+			}
+		},
+		context
+	);
+	console.log(JSON.stringify(result, null, 2));
+});
+
+afterAll(() => {
+	driver.close();
+});
